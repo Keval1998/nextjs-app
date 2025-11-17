@@ -1,1 +1,12 @@
-node_modules
+# Local envs
+.env.local
+.env.*.local
+
+# Node / Next
+node_modules/
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-error.log*
