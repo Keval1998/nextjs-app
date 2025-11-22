@@ -8,6 +8,7 @@ export default function Header() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dashboardPath, setDashboardPath] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -16,6 +17,18 @@ export default function Header() {
         const { data } = await supabase.auth.getUser();
         if (!mounted) return;
         setEmail(data.user?.email ?? null);
+        const uid = data.user?.id;
+        if (uid) {
+          try {
+            const res = await fetch(`/api/users?uid=${uid}`);
+            const json = await res.json();
+            if (json?.user?.role) {
+              setDashboardPath(json.user.role === 'admin' ? '/admin' : json.user.role === 'vendor' ? '/vendor' : '/dashboard');
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
       } catch (e) {
         // ignore
       }
@@ -49,8 +62,10 @@ export default function Header() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-lg font-semibold text-gray-900">
-              My First NextJS App
+            <Link href={dashboardPath ?? '/'} className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/icon-512.png" alt="EasyConnect logo" className="w-8 h-8" />
+              <span className="text-lg font-semibold text-gray-900">EasyConnect</span>
             </Link>
           </div>
 

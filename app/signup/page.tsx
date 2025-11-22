@@ -1,14 +1,15 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from "@/lib/supabase/client";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  // read query params from window when needed to avoid SSR hooks
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<'admin'|'vendor'|'customer'>('customer');
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,19 +45,27 @@ export default function SignUpPage() {
 
       if (signError) throw signError;
 
+      const userId = (data as any)?.user?.id;
+      if (userId) {
+        // create app user row
+        await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: userId, email, role, full_name: null }),
+        });
+      }
+
       // If a session is returned immediately (no email confirmation required), set cookie and redirect.
       const accessToken = (data as any)?.session?.access_token;
       if (accessToken) {
         // Set a simple client-side cookie for middleware detection (non-HttpOnly).
         document.cookie = `sb-access-token=${accessToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-        const from = searchParams?.get('from') ?? '/';
-        router.push(from);
+        const redirectTo = role === 'admin' ? '/admin' : role === 'vendor' ? '/vendor' : '/dashboard';
+        router.push(redirectTo);
         return;
       }
 
-      setMessage(
-        "Check your email for a confirmation link (if email confirmations are enabled)."
-      );
+      setMessage("Check your email for a confirmation link (if email confirmations are enabled).");
       setEmail("");
       setPassword("");
       setConfirm("");
@@ -110,6 +119,15 @@ export default function SignUpPage() {
               onChange={(e) => setConfirm(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Role</label>
+            <select value={role} onChange={(e) => setRole(e.target.value as any)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+              <option value="customer">Customer</option>
+              <option value="vendor">Vendor</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
 
           {error && <div role="alert" className="text-sm text-red-600">{error}</div>}

@@ -9,9 +9,9 @@ export const metadata = {
   title: 'My First NextJS App',
   description: 'Hello World PWA',
   icons: {
-    icon: '/icons/icon-192.png',        // main favicon (browser tab)
-    shortcut: '/icons/icon-192.png',    // shortcut icon
-    apple: '/icons/icon-192.png',       // iOS home-screen icon
+    icon: '/icons/icon-512.png',        // main favicon (browser tab)
+    shortcut: '/icons/icon-512.png',    // shortcut icon
+    apple: '/icons/icon-512.png',       // iOS home-screen icon
   },
   manifest: '/manifest.json',
   themeColor: '#000000',

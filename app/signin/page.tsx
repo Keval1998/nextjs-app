@@ -1,12 +1,11 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from "@/lib/supabase/client";
 
 export default function SignInPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +35,7 @@ export default function SignInPage() {
       // NOTE: this is a non-HttpOnly cookie set from the client. For production, prefer setting a
       // secure HttpOnly cookie from a server endpoint.
       const accessToken = (data as any)?.session?.access_token;
+      const userId = (data as any)?.user?.id ?? (data as any)?.session?.user?.id;
       if (accessToken) {
         // Set cookie for 7 days
         document.cookie = `sb-access-token=${accessToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
@@ -43,9 +43,33 @@ export default function SignInPage() {
 
       setMessage("Signed in successfully.");
 
-      // Redirect back to origin path if provided by middleware
-      const from = searchParams?.get('from') ?? '/';
-      router.push(from);
+      // Decide where to send the user: prefer `from` query param (if present), else use role
+      const from = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('from') : null;
+
+      // If we have an auth user id, try to fetch app user row to determine role
+      let role: string | null = null;
+      if (userId) {
+        try {
+          const res = await fetch(`/api/users?uid=${userId}`);
+          const json = await res.json();
+          if (json?.user?.role) role = json.user.role;
+          else {
+            // Create a default customer user row if missing
+            const createRes = await fetch('/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: userId, email, role: 'customer' }),
+            });
+            const createJson = await createRes.json();
+            role = createJson?.user?.role ?? 'customer';
+          }
+        } catch (e) {
+          console.warn('Could not fetch/create app user row', e);
+        }
+      }
+
+      const rolePath = role === 'admin' ? '/admin' : role === 'vendor' ? '/vendor' : '/dashboard';
+      router.push(from ?? rolePath);
     } catch (err: any) {
       setError(err.message || "Sign in failed");
     } finally {
