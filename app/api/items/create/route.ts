@@ -8,7 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase/adminClient';
 
 type Body = {
   vendor_id: string;
-  title: string;
+  name: string;
   description?: string;
   price?: number;
   status?: 'draft' | 'published' | 'under_review';
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: Body = await req.json();
 
-    if (!body.vendor_id || !body.title) {
+    if (!body.vendor_id || !body.name) {
       return NextResponse.json(
         { error: 'vendor_id and title are required' },
         { status: 400 }
@@ -31,13 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const insertPayload = {
-      vendor_id: body.vendor_id,
-      title: body.title,
-      description: body.description ?? null,
-      price: body.price ?? 0,
-      status: body.status ?? 'draft',
-    };
+   // build insert payload but only include status if caller provided it
+  const insertPayload: any = {
+    vendor_id: body.vendor_id,
+    name: body.name,
+    description: body.description ?? null,
+    price: body.price ?? 0
+  };
+
+  if (body.status !== undefined) {
+    insertPayload.status = body.status;
+  }
 
     const { data, error } = await supabaseAdmin
       .from('items')
