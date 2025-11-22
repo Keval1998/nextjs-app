@@ -25,3 +25,60 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+/* Ensure form controls inherit the app font and are readable on mobile */
+:root {
+  --input-bg: #ffffff;
+  --input-border: #d1d5db; /* tailwind gray-300 */
+  --input-placeholder: rgba(0,0,0,0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --input-bg: #0b1220;
+    --input-border: #374151; /* tailwind gray-700 */
+    --input-placeholder: rgba(255,255,255,0.65);
+  }
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99,102,241,0.8);
+}
+
+/* Placeholder contrast */
+input::placeholder,
+textarea::placeholder {
+  color: var(--input-placeholder);
+  opacity: 1;
+}
+
+/* Safari autofill fix */
+input:-webkit-autofill,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: inherit !important;
+}
+
