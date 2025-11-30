@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/adminClient';
+import Role from '@/lib/constants/roles';
 
 export async function GET(req: Request) {
   try {
     // req.url may be a relative path when called from server code; provide a base fallback
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost';
     const url = new URL(req.url, base);
-    const q = url.searchParams.get('q') ?? '';
+    const searchQuery = url.searchParams.get('q') ?? '';
     const limit = Number(url.searchParams.get('limit') ?? '10');
     const page = Number(url.searchParams.get('page') ?? '1');
     const offset = (Math.max(1, page) - 1) * limit;
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     const rpcRes = await supabaseAdmin.rpc('items_search', {
       p_limit: limit,
       p_offset: offset,
-      p_search: q,
+      p_search: searchQuery,
       p_category: category,
       p_vendor: vendor,
     });
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     const user = (userRes as any)?.data?.user;
     if (!user) return NextResponse.json({ error: 'Unauthorized: invalid token' }, { status: 401 });
 
-    // Verify vendor ownership
+    // Verify vendor exists and ownership OR allow admin
     const { data: vendorRow, error: vendorErr } = await supabaseAdmin
       .from('vendors')
       .select('id, owner_user_id')
@@ -66,8 +67,15 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (vendorErr || !vendorRow) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
-    if (vendorRow.owner_user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden: you do not own this vendor' }, { status: 403 });
+
+    // If user is admin allow creating for any vendor, otherwise verify ownership
+    // Determine user's app role via users table
+    const { data: appUser } = await supabaseAdmin.from('users').select('role,id').eq('id', user.id).limit(1).maybeSingle();
+    const userRole = (appUser as any)?.role ?? null;
+    if (userRole !== Role.ADMIN) {
+      if (vendorRow.owner_user_id !== user.id) {
+        return NextResponse.json({ error: 'Forbidden: you do not own this vendor' }, { status: 403 });
+      }
     }
 
     // Use stored procedure to insert item (RPC will validate presence)

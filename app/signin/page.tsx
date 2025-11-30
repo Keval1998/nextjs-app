@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { supabase } from "@/lib/supabase/client";
+import Role from '@/lib/constants/roles';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -58,17 +59,28 @@ export default function SignInPage() {
             const createRes = await fetch('/api/users', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: userId, email, role: 'customer' }),
+              body: JSON.stringify({ id: userId, email, role: Role.CUSTOMER }),
             });
             const createJson = await createRes.json();
             role = createJson?.user?.role ?? 'customer';
+          }
+
+          // Persist app-level role and vendor id in cookies for UI convenience
+          if (role) {
+            document.cookie = `app-role=${role}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+          }
+          if (json?.vendor?.id) {
+            document.cookie = `app-vendor-id=${json.vendor.id}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+          } else {
+            // clear any previous vendor cookie
+            document.cookie = `app-vendor-id=; path=/; max-age=0; SameSite=Lax`;
           }
         } catch (e) {
           console.warn('Could not fetch/create app user row', e);
         }
       }
 
-      const rolePath = role === 'admin' ? '/admin' : role === 'vendor' ? '/vendor' : '/dashboard';
+      const rolePath = role === Role.ADMIN ? '/admin' : role === Role.VENDOR ? '/vendor' : '/dashboard';
       router.push(from ?? rolePath);
     } catch (err: any) {
       setError(err.message || "Sign in failed");

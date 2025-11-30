@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase/adminClient';
 
 type Body = {
   vendor_id: string;
+  category_id: string;
   name: string;
   description?: string;
   price?: number;
@@ -18,9 +19,9 @@ export async function POST(req: NextRequest) {
   try {
     const body: Body = await req.json();
 
-    if (!body.vendor_id || !body.name) {
+    if (!body.vendor_id || !body.name || !body.category_id) {
       return NextResponse.json(
-        { error: 'vendor_id and title are required' },
+        { error: 'vendor_id, category_id and name are required' },
         { status: 400 }
       );
     }
@@ -31,9 +32,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Category selection is provided by the client dropdown, so skip server-side existence check.
+
    // build insert payload but only include status if caller provided it
   const insertPayload: any = {
     vendor_id: body.vendor_id,
+    category_id: body.category_id,
     name: body.name,
     description: body.description ?? null,
     price: body.price ?? 0

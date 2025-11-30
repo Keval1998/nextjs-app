@@ -19,7 +19,7 @@ export default async function AdminPage() {
           <h3 className="font-medium">Vendors</h3>
           <p className="text-sm text-gray-600 flex-1">View and manage vendors.</p>
           <div className="mt-3">
-            <a href="/vendors" className="inline-block px-3 py-2 bg-indigo-600 text-white rounded">Vendors</a>
+            <a href="/admin/vendors" className="inline-block px-3 py-2 bg-indigo-600 text-white rounded">Vendors</a>
           </div>
         </div>
         <div className="p-4 bg-white rounded shadow flex flex-col">

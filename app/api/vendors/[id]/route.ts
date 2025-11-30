@@ -29,48 +29,46 @@ async function requireAdmin(req: Request) {
   return { ok: true, user };
 }
 
-export async function GET(req: Request) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost';
-    const url = new URL(req.url, base);
-    const searchQuery = url.searchParams.get('q') ?? '';
-    const limit = Number(url.searchParams.get('limit') ?? '10');
-    const page = Number(url.searchParams.get('page') ?? '1');
-    const offset = (Math.max(1, page) - 1) * limit;
-
-    const rpc = await supabaseAdmin.rpc('vendors_search', {
-      p_limit: limit,
-      p_offset: offset,
-      p_search: searchQuery,
-    });
-
-    if (rpc.error) {
-      console.error('/api/vendors RPC error:', rpc.error);
-      return NextResponse.json({ error: rpc.error.message }, { status: 500 });
-    }
-
-    const vendors = rpc.data ?? [];
-    return NextResponse.json({ vendors }, { status: 200 });
+    const id = params.id;
+    const { data, error } = await supabaseAdmin.from('vendors').select('*').eq('id', id).limit(1).maybeSingle();
+    if (error) throw error;
+    if (!data) return NextResponse.json({ error: 'Vendor not found' }, { status: 404 });
+    return NextResponse.json({ vendor: data });
   } catch (err: any) {
-    console.error('/api/vendors unexpected error:', err);
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   // admin-only
   const adminCheck = await requireAdmin(req);
   if (!adminCheck.ok) return NextResponse.json({ error: adminCheck.message }, { status: adminCheck.status });
 
   try {
+    const id = params.id;
     const body = await req.json();
-    const { name, type = null, address = null, owner_user_id = null } = body;
-    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    const { data, error } = await supabaseAdmin.from('vendors').insert([{ name, type, address, owner_user_id }]).select().maybeSingle();
+    const { name = null, type = null, address = null } = body;
+    const { data, error } = await supabaseAdmin.from('vendors').update({ name, type, address }).eq('id', id).select().maybeSingle();
     if (error) throw error;
-    return NextResponse.json({ vendor: data }, { status: 201 });
+    return NextResponse.json({ vendor: data });
   } catch (err: any) {
-    console.error('/api/vendors POST error', err);
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  // admin-only
+  const adminCheck = await requireAdmin(req);
+  if (!adminCheck.ok) return NextResponse.json({ error: adminCheck.message }, { status: adminCheck.status });
+
+  try {
+    const id = params.id;
+    const { data, error } = await supabaseAdmin.from('vendors').delete().eq('id', id).select();
+    if (error) throw error;
+    return NextResponse.json({ deleted: data });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

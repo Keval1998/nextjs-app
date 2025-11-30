@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import Role from '@/lib/constants/roles';
 
 type Vendor = { id: string; name: string; created_at?: string };
 type Category = { id: string; name: string; image_url?: string | null; description?: string | null };
@@ -26,12 +27,12 @@ export default function VendorPage() {
     async function loadUser() {
       try {
         const { data } = await supabase.auth.getUser();
-        const uid = (data as any)?.user?.id;
-        if (!uid) return;
-        const res = await fetch(`/api/users?uid=${uid}`);
+        const userId = (data as any)?.user?.id;
+        if (!userId) return;
+        const res = await fetch(`/api/users?uid=${userId}`);
         const json = await res.json();
         if (!mounted) return;
-        setRole(json?.user?.role ?? 'customer');
+        setRole(json?.user?.role ?? Role.CUSTOMER);
         setVendorRow(json?.vendor ?? null);
       } catch (e) {
         // ignore
@@ -41,7 +42,7 @@ export default function VendorPage() {
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => { if (role === 'admin') fetchVendors(); }, [role, vendorsPage]);
+  useEffect(() => { if (role === Role.ADMIN) fetchVendors(); }, [role, vendorsPage]);
   useEffect(() => { if (role) fetchCategories(); }, [role, catsPage]);
 
   async function fetchVendors() {

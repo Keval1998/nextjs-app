@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import Role from '@/lib/constants/roles';
 
 export default function AddItemLink({ categoryId }: { categoryId: string }) {
   const [allowed, setAllowed] = useState(false);
@@ -11,12 +12,12 @@ export default function AddItemLink({ categoryId }: { categoryId: string }) {
     async function check() {
       try {
         const { data } = await supabase.auth.getUser();
-        const uid = (data as any)?.user?.id;
-        if (!uid) return;
-        const res = await fetch(`/api/users?uid=${uid}`);
+        const userId = (data as any)?.user?.id;
+        if (!userId) return;
+        const res = await fetch(`/api/users?uid=${userId}`);
         const json = await res.json();
         // allow only if user is vendor and has vendor record
-        if (json?.user?.role === 'vendor' && json?.vendor?.id) {
+        if (json?.user?.role === Role.VENDOR && json?.vendor?.id) {
           if (mounted) setAllowed(true);
           return;
         }

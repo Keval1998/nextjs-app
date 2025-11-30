@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import Role from '@/lib/constants/roles';
 
 export default function Header() {
   const router = useRouter();
@@ -17,13 +18,13 @@ export default function Header() {
         const { data } = await supabase.auth.getUser();
         if (!mounted) return;
         setEmail(data.user?.email ?? null);
-        const uid = data.user?.id;
-        if (uid) {
+        const userId = data.user?.id;
+        if (userId) {
           try {
-            const res = await fetch(`/api/users?uid=${uid}`);
+            const res = await fetch(`/api/users?uid=${userId}`);
             const json = await res.json();
             if (json?.user?.role) {
-              setDashboardPath(json.user.role === 'admin' ? '/admin' : json.user.role === 'vendor' ? '/vendor' : '/dashboard');
+              setDashboardPath(json.user.role === Role.ADMIN ? '/admin' : json.user.role === Role.VENDOR ? '/vendor' : '/dashboard');
             }
           } catch (e) {
             // ignore

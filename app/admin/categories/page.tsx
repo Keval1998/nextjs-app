@@ -10,7 +10,7 @@ type Category = {
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [q, setQ] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
   const [loading, setLoading] = useState(false);
@@ -21,11 +21,14 @@ export default function AdminCategoriesPage() {
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
   async function fetchCategories() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/categories?q=${encodeURIComponent(q)}&limit=${limit}&page=${page}`);
+      const res = await fetch(`/api/categories?q=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${page}`);
       const json = await res.json();
       setCategories(json.categories ?? []);
     } catch (e) {
@@ -38,12 +41,12 @@ export default function AdminCategoriesPage() {
   useEffect(() => {
     fetchCategories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, page]);
+  }, [searchQuery, page]);
 
   async function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       setPage(1);
-      setQ((e.target as HTMLInputElement).value);
+      setSearchQuery((e.target as HTMLInputElement).value);
     }
   }
 
@@ -68,6 +71,43 @@ export default function AdminCategoriesPage() {
       fetchCategories();
     } catch (e: any) {
       setError(e.message || String(e));
+    }
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCategory) return;
+    setError(null);
+    try {
+      const res = await fetch(`/api/categories/${editingCategory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: editingCategory.name, image_url: editingCategory.image_url, description: editingCategory.description }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to update category');
+      setSuccess('Category updated');
+      setShowEditModal(false);
+      fetchCategories();
+    } catch (e: any) {
+      setError(e.message || String(e));
+    }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    if (!confirm('Delete this category? This cannot be undone.')) return;
+    setDeletingCategoryId(id);
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Failed to delete');
+      setSuccess('Category deleted');
+      fetchCategories();
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setDeletingCategoryId(null);
     }
   }
 
@@ -131,6 +171,8 @@ export default function AdminCategoriesPage() {
               type="search"
               placeholder="Search categories"
               aria-label="Search categories"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKey}
               className="rounded-md border px-3 py-2"
             />
@@ -156,6 +198,8 @@ export default function AdminCategoriesPage() {
                   {c.description && <p className="text-sm text-gray-600 mt-1">{c.description}</p>}
                   <div className="mt-3">
                     <a href={`/categories/${c.id}`} className="text-indigo-600 hover:underline">View details</a>
+                    <button onClick={() => { setEditingCategory(c); setShowEditModal(true); }} className="ml-3 text-sm px-2 py-1 bg-yellow-400 text-white rounded">Edit</button>
+                    <button onClick={() => handleDeleteCategory(c.id)} disabled={deletingCategoryId===c.id} className="ml-2 text-sm px-2 py-1 bg-red-600 text-white rounded">{deletingCategoryId===c.id? 'Deleting…' : 'Delete'}</button>
                   </div>
                 </div>
               </article>
@@ -163,6 +207,31 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </section>
+      {showEditModal && editingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded p-4 w-full max-w-lg">
+            <h3 className="font-medium mb-2">Edit Category</h3>
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <div>
+                <label className="block text-sm">Name</label>
+                <input value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm">Image URL</label>
+                <input value={editingCategory.image_url ?? ''} onChange={(e) => setEditingCategory({ ...editingCategory, image_url: e.target.value })} className="w-full border rounded p-2" />
+              </div>
+              <div>
+                <label className="block text-sm">Description</label>
+                <input value={editingCategory.description ?? ''} onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })} className="w-full border rounded p-2" />
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="submit" className="px-3 py-2 bg-emerald-600 text-white rounded">Save</button>
+                <button type="button" onClick={() => setShowEditModal(false)} className="px-3 py-2 bg-gray-100 rounded">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

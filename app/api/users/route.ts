@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/adminClient';
+import Role from '@/lib/constants/roles';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { id, email, role = 'customer', full_name = null } = body;
+    const { id, email, role = Role.CUSTOMER, full_name = null } = body;
 
     if (!id || !email) return NextResponse.json({ error: 'Missing id or email' }, { status: 400 });
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     if (error) throw error;
 
     let vendor = null;
-    if (role === 'vendor') {
+    if (role === Role.VENDOR) {
       // create a lightweight vendor record owned by this user
       const v = await supabaseAdmin
         .from('vendors')
@@ -41,13 +42,13 @@ export async function GET(req: Request) {
   try {
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost';
     const url = new URL(req.url, base);
-    const uid = url.searchParams.get('uid');
-    if (!uid) return NextResponse.json({ error: 'Missing uid' }, { status: 400 });
+    const userId = url.searchParams.get('uid');
+    if (!userId) return NextResponse.json({ error: 'Missing uid' }, { status: 400 });
 
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('id', uid)
+      .eq('id', userId)
       .limit(1)
       .maybeSingle();
 
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
     let vendor = null;
     try {
       if (data?.role === 'vendor') {
-        const v = await supabaseAdmin.from('vendors').select('*').eq('owner_user_id', uid).limit(1).maybeSingle();
+        const v = await supabaseAdmin.from('vendors').select('*').eq('owner_user_id', userId).limit(1).maybeSingle();
         if (!v.error) vendor = v.data ?? null;
       }
     } catch (e) {

@@ -3,13 +3,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { supabase } from "@/lib/supabase/client";
+import Role from '@/lib/constants/roles';
 
 export default function SignUpPage() {
   const router = useRouter();
   // read query params from window when needed to avoid SSR hooks
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<'admin'|'vendor'|'customer'>('customer');
+  const [role, setRole] = useState<Role | string>(Role.CUSTOMER);
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -60,7 +61,19 @@ export default function SignUpPage() {
       if (accessToken) {
         // Set a simple client-side cookie for middleware detection (non-HttpOnly).
         document.cookie = `sb-access-token=${accessToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-        const redirectTo = role === 'admin' ? '/admin' : role === 'vendor' ? '/vendor' : '/dashboard';
+        // Also persist role and vendor id (if created) for client UI convenience
+        document.cookie = `app-role=${role}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+        try {
+          // When we just created the user row we may have created vendor; fetch to get vendor id
+          const ures = await fetch(`/api/users?uid=${userId}`);
+          const ujson = await ures.json();
+          if (ujson?.vendor?.id) {
+            document.cookie = `app-vendor-id=${ujson.vendor.id}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+          }
+        } catch (e) {
+          // ignore
+        }
+        const redirectTo = role === Role.ADMIN ? '/admin' : role === Role.VENDOR ? '/vendor' : '/dashboard';
         router.push(redirectTo);
         return;
       }
@@ -123,10 +136,10 @@ export default function SignUpPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as any)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-              <option value="customer">Customer</option>
-              <option value="vendor">Vendor</option>
-              <option value="admin">Admin</option>
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+              <option value={Role.CUSTOMER}>Customer</option>
+              <option value={Role.VENDOR}>Vendor</option>
+              <option value={Role.ADMIN}>Admin</option>
             </select>
           </div>
 

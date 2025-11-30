@@ -18,12 +18,12 @@ export default function AddItemToCategory({ params }: { params: { id: string } }
 
     // Get current user and fetch vendor id from app users table
     const { data: userRes } = await supabase.auth.getUser();
-    const uid = (userRes as any)?.user?.id;
-    if (!uid) return setError('Not authenticated');
+    const userId = (userRes as any)?.user?.id;
+    if (!userId) return setError('Not authenticated');
 
     let vendorId: string | null = null;
     try {
-      const res = await fetch(`/api/users?uid=${uid}`);
+      const res = await fetch(`/api/users?uid=${userId}`);
       const json = await res.json();
       if (json?.user?.role === 'vendor' && json?.vendor) vendorId = json.vendor.id;
     } catch (e) {
